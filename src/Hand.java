@@ -17,6 +17,10 @@ public class Hand {
         contents.add(card);
     }
 
+    public ArrayList<Card> getCards() {
+        return contents;
+    }
+
     public Card[] hasCards(Card[] cards) {
         List<Card> matched = new ArrayList<>();
         for (Card c : cards) {

@@ -11,6 +11,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.Spinner;
 
 public class Main extends Application {
 
@@ -64,26 +65,20 @@ public class Main extends Application {
 
         // Player Count
         Label playerLabel = new Label("Number of Players:");
-
-        //-----------------------------------
-        // need to be implemented!!!!
-        //-----------------------------------
+        Spinner<Integer> playerCountSpinner = new Spinner<>(2,6,4);
+        playerCountSpinner.setPrefWidth(150);
 
         Button startBtn = new Button("Start Game");
         startBtn.setPrefWidth(200);
 
         startBtn.setOnAction(e -> {
-            //-----------------------------------
-            // need to be implemented!!!!
-            //-----------------------------------
-
-            stage.setScene(createMainGameScreen(stage));
+            stage.setScene(createMainGameScreen(stage, playerCountSpinner.getValue()));
         });
 
         root.getChildren().addAll(
                 title,
                 playerLabel,
-                // playerCountBox
+                playerCountSpinner,
                 startBtn
         );
 
@@ -93,8 +88,8 @@ public class Main extends Application {
 
 
     // Main game screen
-    public Scene createMainGameScreen(Stage stage) {
-        game = new Game();
+    public Scene createMainGameScreen(Stage stage, int playerCount) {
+        game = new Game(playerCount);
 
         BorderPane root = new BorderPane();
 
@@ -226,11 +221,32 @@ public class Main extends Application {
         Button playAgain = new Button("Play Again");
 
         viewSolution.setPrefWidth(200);
+        viewSolution.setOnAction(e -> {
+            Stage popup = new Stage();
+            popup.setTitle("Solution");
+
+            VBox box = new VBox(10);
+            box.setPadding(new Insets(20));
+            box.setAlignment(Pos.CENTER);
+
+            box.getChildren().add(new Label("The Answer:"));
+            for (Card c : game.getAnswer().getCards()) {
+                box.getChildren().add(new Label("• " + c.getName()));
+            }
+
+            Button close = new Button("Close");
+            close.setOnAction(ev -> popup.close());
+            box.getChildren().add(close);
+
+            popup.setScene(new Scene(box, 280, 240));
+            popup.show();
+        });
+
         mainMenu.setPrefWidth(200);
         playAgain.setPrefWidth(200);
 
         mainMenu.setOnAction(e -> stage.setScene(createStartScreen(stage)));
-        playAgain.setOnAction(e -> stage.setScene(createMainGameScreen(stage)));
+        playAgain.setOnAction(e -> stage.setScene(createMainGameScreen(stage, game.getPlayerCount())));
 
         root.getChildren().addAll(result, viewSolution, mainMenu, playAgain);
 

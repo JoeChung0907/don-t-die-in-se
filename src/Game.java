@@ -20,8 +20,18 @@ public class Game {
     private final Random rng = new Random();
     private int width;
     private int height;
+    private final int requestedPlayerCount;
 
-    public Game() {
+    public int getPlayerCount() {
+        return players.length;
+    }
+
+    public Hand getAnswer() {
+        return answer;
+    }
+
+    public Game(int playerCount) {
+        this.requestedPlayerCount = playerCount;
         this.turn = 0;
         this.turnState = 0;
         try {
@@ -77,11 +87,12 @@ public class Game {
         }
         answer = new Hand(answerCards);
 
-        int playerCount = 4;
+        int playerCount = requestedPlayerCount;
         players = new Player[playerCount];
         if (brains == null) brains = new Brain[playerCount];
-        String[] names = {"P1", "P2", "P3", "P4"};
-        int[][] spawns = {{0, 0}, {width - 1, 0}, {0, height - 1}, {width - 1, height - 1}};
+        String[] names = {"Miss Scarlett", "Col Mustard", "Mrs White", "Rev Green", "Mrs Peacock", "Prof Plum"};
+        int[][] spawns = {{0, 0}, {width - 1, 0}, {0, height - 1}, {width - 1, height - 1}, {width / 2, 0}, {width / 2, height - 1}
+        };
         for (int i = 0; i < playerCount; i++) {
             players[i] = new Player(spawns[i][0], spawns[i][1], names[i]);
             tiles[spawns[i][0]][spawns[i][1]].isOccupied = true;
