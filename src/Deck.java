@@ -75,4 +75,7 @@ public class Deck {
         return contents.length - index;
     }
 
+    public Card[] getContents() {
+        return contents;
+    }
 }
