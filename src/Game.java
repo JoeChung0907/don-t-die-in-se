@@ -299,7 +299,9 @@ public class Game {
     public int rollAndMove() {
         int roll = (rng.nextInt(6) + 1) + (rng.nextInt(6) + 1);
         movementPhase(turn);
-        turn = (turn + 1) % players.length;
+        do{
+            turn = (turn + 1) % players.length;
+        } while (players[turn].hasGuessed);
         return roll;
     }
 
