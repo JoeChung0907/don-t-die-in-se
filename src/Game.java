@@ -111,6 +111,15 @@ public class Game {
         }
 
         weapons = new Weapon[0];
+
+        Card[] suspectCards = decks[0].getContents();
+        Card[] weaponCards = decks[1].getContents();
+        Card[] roomCardArr = decks[2].getContents();
+        for (int i = 0; i < playerCount; i++) {
+            if (brains[i] == null) {
+                brains[i] = new RandomBrain(suspectCards, weaponCards, roomCardArr, rooms);
+            }
+        }
     }
 
     private void skipLines(BufferedReader br, int n) throws IOException {
@@ -281,5 +290,49 @@ public class Game {
 
     public int getHeight() {
         return height;
+    }
+
+    public int getTurn() {
+        return turn;
+    }
+
+    public int rollAndMove() {
+        int roll = (rng.nextInt(6) + 1) + (rng.nextInt(6) + 1);
+        movementPhase(turn);
+        turn = (turn + 1) % players.length;
+        return roll;
+    }
+
+    public String doSuggestion() {
+        Player p = players[turn];
+        if (p.inRoom ==-1) return p.getName() + ": not in a room";
+        Card[] suggestion = brains[turn].cardsSuggestion(players, tiles, turn);
+        boolean uncontested = handleSuggestion(turn, suggestion);
+        return p.getName() + " suggests: "
+        + suggestion[0].getName() + ", "
+        + suggestion[1].getName() + ", "
+        + suggestion[2].getName()
+        + (uncontested ? " (uncontested!)" : " (contested)");
+    }
+
+    public String doAccusation() {
+        Player p = players[turn];
+        Card[] accusation = brains[turn].cardsAccusation(players, tiles, turn);
+        boolean correct = handleAccusation(turn, accusation);
+        String result = p.getName() + " accuses: "
+            + accusation[0].getName() + ", "
+            + accusation[1].getName() + ", "
+            + accusation[2].getName();
+        if (correct) {
+            return result + " — CORRECT! " + p.getName() + " wins!";
+        } else {
+            p.hasGuessed = true;
+            for (int i = 0; i < players.length; i++) {
+                if (brains[i] != null) {
+                    brains[i].playerAccusationFail(players, tiles, i, turn, accusation);
+                }
+            }
+            return result + " — WRONG! " + p.getName() + " is eliminated!";
+        }
     }
 }

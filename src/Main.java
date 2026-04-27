@@ -1,4 +1,5 @@
 import javafx.application.Application;
+import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -16,6 +17,7 @@ import javafx.scene.control.Spinner;
 public class Main extends Application {
 
     private Game game;
+    private TextArea log;
     private GridPane boardGrid;
 
     @Override
@@ -104,7 +106,7 @@ public class Main extends Application {
         root.setRight(controlPanel);
 
         // Bottom Log
-        TextArea log = new TextArea();
+        log = new TextArea();
         log.setEditable(false);
         log.setPrefHeight(120);
         log.setText("Game Started...\n");
@@ -166,13 +168,22 @@ public class Main extends Application {
         //need to be implemented!!!!
         //-----------------------------------
         rollBtn.setOnAction(e -> {
+            int currentPlayer = game.getTurn();
+            String name = game.getPlayers()[currentPlayer].getName();
+            int roll = game.rollAndMove();
+            log.appendText(name + " rolled " + roll + "\n");
             updateBoard();
         });
 
         suggestBtn.setOnAction(e -> {
+            String result = game.doSuggestion();
+            log.appendText(result + "\n");
         });
 
         accuseBtn.setOnAction(e -> {
+            String result = game.doAccusation();
+            log.appendText(result + "\n");
+            updateBoard();
         });
 
         panel.getChildren().addAll(statusLabel, rollBtn, suggestBtn, accuseBtn);
