@@ -1,4 +1,4 @@
-import javafx.application.Application;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -13,12 +13,36 @@ import javafx.stage.Stage;
 import javafx.geometry.Pos;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Spinner;
+import javafx.util.Duration;
+import javafx.scene.control.ComboBox;
+
 
 public class Main extends Application {
 
     private Game game;
     private TextArea log;
     private GridPane boardGrid;
+
+    //Declare private in the class and connect and use it!
+    private Button rollBtn;
+    private Button suggestBtn;
+    private Button accuseBtn;
+    private Button statusBtn;
+    private Button notesBtn;
+
+
+
+    // Player character colors for better readability
+    private Color[] playerColors = {
+            Color.RED,       // Player 0
+            Color.BLUE,      // Player 1
+            Color.GREEN,     // Player 2
+            Color.YELLOW,    // Player 3
+            Color.PURPLE,    // Player 4
+            Color.ORANGE     // Player 5
+    };
+
+
 
     @Override
     public void start(Stage stage) {
@@ -45,9 +69,7 @@ public class Main extends Application {
         settingsBtn.setPrefWidth(200);
         exitBtn.setPrefWidth(200);
 
-        //-----------------------------------
-        //need to be implemented!!!!
-        //-----------------------------------
+
         startBtn.setOnAction(e -> stage.setScene(initialGameSettingScreen(stage)));
 
         settingsBtn.setOnAction(e -> showSettingsPopup());
@@ -112,11 +134,75 @@ public class Main extends Application {
         log.setText("Game Started...\n");
         root.setBottom(log);
 
+        updateButtonState();
+        if (game.brains[game.getTurn()] != null) {
+            runAITurn();
+        }
         return new Scene(root, 1024, 768);
     }
 
+    // AI logic for AI turn
+    private void runAITurn() {
+        int current = game.getTurn();
 
-        private void updateBoard() {
+        if (game.brains[current] == null) {
+            return;
+        }
+
+        String aiName = game.getDisplayName(current);
+
+
+        log.appendText(aiName + " is thinking...\n");
+
+        int delay = 2000 + new java.util.Random().nextInt(2000);
+
+        PauseTransition pause = new PauseTransition(Duration.millis(delay));
+        pause.setOnFinished(e -> {
+
+            if (game.getTurn() != current) {
+                return;
+            }
+
+            int roll = game.rollAndMove();
+            log.appendText(aiName + " rolled " + roll + "\n");
+            updateBoard();
+
+            if (game.getPlayers()[current].inRoom != -1 &&
+                    game.brains[current].makeSuggestion(game.getPlayers(), game.getTiles(), current)) {
+
+                String suggestion = game.doSuggestion();
+                log.appendText(aiName + ": " + suggestion + "\n");
+            }
+
+            if (game.brains[current].makeAccusation(game.getPlayers(), game.getTiles(), current)) {
+                String accusation = game.doAccusation();
+                log.appendText(aiName + ": " + accusation + "\n");
+
+                if (accusation.contains("WRONG!")) {
+                    log.appendText(aiName + " has been eliminated.\n");
+                }
+                if (accusation.contains("CORRECT!")) {
+                    Stage stage = (Stage) boardGrid.getScene().getWindow();
+                    stage.setScene(createGameOverScreen(stage, aiName));
+                    return;
+                }
+                updateBoard();
+            }
+
+            updateButtonState();
+
+
+            if (game.brains[game.getTurn()] != null) {
+                runAITurn();
+            }
+        });
+
+        pause.play();
+    }
+
+
+
+    private void updateBoard() {
         boardGrid.getChildren().clear();
 
         int width = game.getWidth();
@@ -131,7 +217,7 @@ public class Main extends Application {
                 if (!currentTile.isEnterable) {
                     tileView.setFill(Color.DARKSLATEGRAY);
                 } else if (currentTile.isOccupied) {
-                    tileView.setFill(Color.CRIMSON);
+                    tileView.setFill(Color.LIGHTGRAY);
                 } else if (currentTile.doorTo != -1) {
                     tileView.setFill(Color.DARKORANGE);
                 } else {
@@ -143,6 +229,17 @@ public class Main extends Application {
 
                 boardGrid.add(tileView, x, y);
             }
+        }
+        Player[] players = game.getPlayers();
+        for (int i = 0; i < players.length; i++) {
+            Player p = players[i];
+
+            Rectangle piece = new Rectangle(24, 24);
+            piece.setFill(playerColors[i]);
+            piece.setStroke(Color.BLACK);
+            piece.setStrokeWidth(1);
+
+            boardGrid.add(piece, p.posX, p.posY);
         }
     }
 
@@ -156,41 +253,308 @@ public class Main extends Application {
         Label statusLabel = new Label("Current Status: Game in progress");
         statusLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
-        Button rollBtn = new Button("Roll Dice & Move");
-        Button suggestBtn = new Button("Make Suggestion");
-        Button accuseBtn = new Button("Make Accusation");
+        //Declare private in the class and connect and use it!
+        rollBtn = new Button("Roll Dice & Move");
+        suggestBtn = new Button("Make Suggestion");
+        accuseBtn = new Button("Make Accusation");
+        statusBtn = new Button("My status");
+        notesBtn = new Button("My Notes");
+
+
+
+
 
         rollBtn.setMaxWidth(Double.MAX_VALUE);
         suggestBtn.setMaxWidth(Double.MAX_VALUE);
         accuseBtn.setMaxWidth(Double.MAX_VALUE);
+        statusBtn.setMaxWidth(Double.MAX_VALUE);
+        notesBtn.setMaxWidth(Double.MAX_VALUE);
 
-        //-----------------------------------
-        //need to be implemented!!!!
-        //-----------------------------------
+
+
         rollBtn.setOnAction(e -> {
             int currentPlayer = game.getTurn();
-            String name = game.getPlayers()[currentPlayer].getName();
+            String name = game.getDisplayName(currentPlayer);
             int roll = game.rollAndMove();
             log.appendText(name + " rolled " + roll + "\n");
             updateBoard();
+            updateButtonState();
+            //call AI turn logic if next turn is AI
+            if (game.brains[game.getTurn()] != null) {
+                runAITurn();
+            }
         });
 
-        suggestBtn.setOnAction(e -> {
-            String result = game.doSuggestion();
-            log.appendText(result + "\n");
+        suggestBtn.setOnAction(e -> {showSuggestionPopup();
+
+            updateButtonState();
         });
 
         accuseBtn.setOnAction(e -> {
-            String result = game.doAccusation();
-            log.appendText(result + "\n");
-            updateBoard();
-        });
+                showAccusationPopup();
 
-        panel.getChildren().addAll(statusLabel, rollBtn, suggestBtn, accuseBtn);
+        });
+        statusBtn.setOnAction(e -> showStatusPopup());
+        notesBtn.setOnAction(e -> showNotepadPopup());
+        panel.getChildren().addAll(statusLabel, rollBtn, suggestBtn, accuseBtn, statusBtn, notesBtn);
+
+
         return panel;
+
     }
 
-// popup box for setting option
+    // Button State for inactivate button on AI's turn
+    private void updateButtonState() {
+        int current = game.getTurn();
+        boolean isAI = (game.brains[current] != null);
+        boolean iAmEliminated = game.getPlayers()[game.humanIndex].hasGuessed;
+
+        boolean disable = isAI || iAmEliminated;
+
+        rollBtn.setDisable(disable);
+        suggestBtn.setDisable(disable);
+        accuseBtn.setDisable(disable);
+    }
+    // popup box for checking status
+    private void showStatusPopup() {
+        Stage popup = new Stage();
+        popup.setTitle("Your Status");
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.TOP_LEFT);
+
+        int me = game.humanIndex;
+        Player player = game.getPlayers()[me];
+
+        Label title = new Label("Your Status");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
+
+        Label name = new Label("Character: " + player.name);
+        name.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        Label cardsTitle = new Label("Your Cards:");
+        cardsTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        VBox cardList = new VBox(5);
+
+        for (Card c : player.hand.getCards()) {
+            Label cardLabel = new Label("• " + c.getName());
+            cardList.getChildren().add(cardLabel);
+        }
+
+        Button closeBtn = new Button("Close");
+        closeBtn.setOnAction(e -> popup.close());
+
+        root.getChildren().addAll(title, name, cardsTitle, cardList, closeBtn);
+
+        popup.setScene(new Scene(root, 300, 350));
+        popup.show();
+    }
+
+    private void showNotepadPopup() {
+        Stage popup = new Stage();
+        popup.setTitle("My Notepad");
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.TOP_LEFT);
+
+        int me = game.humanIndex;
+        Player player = game.getPlayers()[me];
+
+        Label title = new Label("Your Notes");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        // call the recent Note
+        TextArea generalNotesArea = new TextArea(player.notes.getGeneralNotes());
+        generalNotesArea.setPrefHeight(200);
+
+        Button saveBtn = new Button("Save");
+        Button closeBtn = new Button("Close");
+
+        saveBtn.setOnAction(e -> {
+            player.notes.setGeneralNotes(generalNotesArea.getText());
+            popup.close();
+        });
+
+        closeBtn.setOnAction(e -> popup.close());
+
+        root.getChildren().addAll(title, generalNotesArea, saveBtn, closeBtn);
+
+        popup.setScene(new Scene(root, 350, 350));
+        popup.show();
+    }
+
+    private void showSuggestionPopup() {
+        Stage popup = new Stage();
+        popup.setTitle("Make a Suggestion");
+
+        VBox root = new VBox(20);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.TOP_LEFT);
+
+        Label title = new Label("Make a Suggestion");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
+
+        // Suspect ComboBox
+        ComboBox<String> suspectBox = new ComboBox<>();
+        for (Card c : game.getDecks()[0].getContents()) {
+            suspectBox.getItems().add(c.getName());
+        }
+        suspectBox.setPromptText("Select Suspect");
+
+        // Weapon ComboBox
+        ComboBox<String> weaponBox = new ComboBox<>();
+        for (Card c : game.getDecks()[1].getContents()) {
+            weaponBox.getItems().add(c.getName());
+        }
+        weaponBox.setPromptText("Select Weapon");
+        
+        int me = game.getTurn();
+        int roomId = game.getPlayers()[me].inRoom;
+
+        if (roomId == -1) {
+            log.appendText("You must be inside a room to make a suggestion.\n");
+            popup.close();
+            return;
+        }
+
+        String roomName = game.getDecks()[2].getContents()[roomId].getName();
+        Label roomLabel = new Label("Room: " + roomName);
+        roomLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        // Buttons
+        Button confirmBtn = new Button("Confirm");
+        Button cancelBtn = new Button("Cancel");
+
+        confirmBtn.setOnAction(e -> {
+            String suspect = suspectBox.getValue();
+            String weapon = weaponBox.getValue();
+
+            if (suspect == null || weapon == null) {
+                log.appendText("You must select both suspect and weapon.\n");
+                return;
+            }
+
+            String result = game.doSuggestionForHuman(suspect, weapon, roomName);
+            log.appendText(result + "\n");
+
+            popup.close();
+            updateButtonState();
+        });
+
+        cancelBtn.setOnAction(e -> popup.close());
+
+        root.getChildren().addAll(
+                title,
+                new Label("Suspect:"), suspectBox,
+                new Label("Weapon:"), weaponBox,
+                roomLabel,
+                confirmBtn, cancelBtn
+        );
+
+        popup.setScene(new Scene(root, 350, 400));
+        popup.show();
+    }
+
+
+    // Accusation popup
+    private void showAccusationPopup() {
+        Stage popup = new Stage();
+        popup.setTitle("Make an Accusation");
+
+        VBox root = new VBox(20);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.TOP_LEFT);
+
+        Label title = new Label("Make an Accusation");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
+
+        // Suspect ComboBox
+        ComboBox<String> suspectBox = new ComboBox<>();
+        for (Card c : game.getDecks()[0].getContents()) {
+            suspectBox.getItems().add(c.getName());
+        }
+        suspectBox.setPromptText("Select Suspect");
+
+        // Weapon ComboBox
+        ComboBox<String> weaponBox = new ComboBox<>();
+        for (Card c : game.getDecks()[1].getContents()) {
+            weaponBox.getItems().add(c.getName());
+        }
+        weaponBox.setPromptText("Select Weapon");
+
+        // Room ComboBox
+        ComboBox<String> roomBox = new ComboBox<>();
+        for (Card c : game.getDecks()[2].getContents()) {
+            roomBox.getItems().add(c.getName());
+        }
+        roomBox.setPromptText("Select Room");
+
+        // Buttons
+        Button confirmBtn = new Button("Confirm");
+        Button cancelBtn = new Button("Cancel");
+
+        confirmBtn.setOnAction(e -> {
+            String suspect = suspectBox.getValue();
+            String weapon = weaponBox.getValue();
+            String room = roomBox.getValue();
+
+            if (suspect == null || weapon == null || room == null) {
+                log.appendText("You must select suspect, weapon, and room.\n");
+                return;
+            }
+
+            String result = game.doAccusationForHuman(suspect, weapon, room);
+            log.appendText(result + "\n");
+
+            if (result.contains("CORRECT!")) {
+                Stage stage = (Stage) boardGrid.getScene().getWindow();
+                stage.setScene(createGameOverScreen(stage, game.getDisplayName(game.getTurn())));
+                return;
+            }
+            if (result.contains("WRONG!")) {
+
+                game.rollAndMove();
+
+                updateBoard();
+                updateButtonState();
+
+                if (game.brains[game.getTurn()] != null) {
+                    runAITurn();
+                }
+
+                popup.close();
+                return;
+            }
+
+
+            popup.close();
+            updateBoard();
+            updateButtonState();
+
+            if (game.brains[game.getTurn()] != null) {
+                runAITurn();
+            }
+        });
+
+        cancelBtn.setOnAction(e -> popup.close());
+
+        root.getChildren().addAll(
+                title,
+                new Label("Suspect:"), suspectBox,
+                new Label("Weapon:"), weaponBox,
+                new Label("Room:"), roomBox,
+                confirmBtn, cancelBtn
+        );
+
+        popup.setScene(new Scene(root, 350, 450));
+        popup.show();
+    }
+
+
+    // popup box for setting option
     private void showSettingsPopup() {
         Stage popup = new Stage();
         popup.setTitle("Settings");
@@ -208,9 +572,6 @@ public class Main extends Application {
         root.getChildren().addAll(title, closeBtn);
 
 
-        //-----------------------------------
-        //need to be implemented for setting option inside the box!!!!
-        //-----------------------------------
 
         Scene scene = new Scene(root, 300, 200);
         popup.setScene(scene);
