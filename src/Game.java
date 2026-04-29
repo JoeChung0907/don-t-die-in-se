@@ -331,6 +331,10 @@ public class Game {
     public int getTurn() {
         return turn;
     }
+    public Deck[] getDecks() {
+        return decks;
+    }
+
 
     public int rollAndMove() {
         int roll = (rng.nextInt(6) + 1) + (rng.nextInt(6) + 1);
@@ -352,6 +356,36 @@ public class Game {
         + suggestion[2].getName()
         + (uncontested ? " (uncontested!)" : " (contested)");
     }
+    public String doSuggestionForHuman(String suspectName, String weaponName, String roomName) {
+        Player p = players[turn];
+
+        if (p.inRoom == -1) {
+            return p.getName() + ": not in a room";
+        }
+
+        Card suspect = null, weapon = null, room = null;
+
+        for (Card c : decks[0].getContents()) {
+            if (c.getName().equals(suspectName)) suspect = c;
+        }
+        for (Card c : decks[1].getContents()) {
+            if (c.getName().equals(weaponName)) weapon = c;
+        }
+        for (Card c : decks[2].getContents()) {
+            if (c.getName().equals(roomName)) room = c;
+        }
+
+        Card[] suggestion = new Card[]{suspect, weapon, room};
+
+        boolean uncontested = handleSuggestion(turn, suggestion);
+
+        return p.getName() + " suggests: "
+                + suspectName + ", "
+                + weaponName + ", "
+                + roomName
+                + (uncontested ? " (uncontested!)" : " (contested)");
+    }
+
 
     public String doAccusation() {
         Player p = players[turn];
@@ -373,4 +407,30 @@ public class Game {
             return result + " — WRONG! " + p.getName() + " is eliminated!";
         }
     }
+    public String doAccusationForHuman(String suspectName, String weaponName, String roomName) {
+        Player p = players[turn];
+
+        Card suspect = null, weapon = null, room = null;
+
+        for (Card c : decks[0].getContents()) if (c.getName().equals(suspectName)) suspect = c;
+        for (Card c : decks[1].getContents()) if (c.getName().equals(weaponName)) weapon = c;
+        for (Card c : decks[2].getContents()) if (c.getName().equals(roomName)) room = c;
+
+        Card[] accusation = new Card[]{suspect, weapon, room};
+
+        boolean correct = handleAccusation(turn, accusation);
+
+        String result = p.getName() + " accuses: "
+                + suspectName + ", "
+                + weaponName + ", "
+                + roomName;
+
+        if (correct) {
+            return result + " — CORRECT! " + p.getName() + " wins!";
+        } else {
+            p.hasGuessed = true;
+            return result + " — WRONG! " + p.getName() + " is eliminated!";
+        }
+    }
+
 }
